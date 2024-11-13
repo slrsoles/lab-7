@@ -5,11 +5,17 @@ author: "Skylar Richards"
 format: html
 editor: source
 embed-resources: true
+message: false
+warning: false
+code-fold: true
+code-tools: true
 ---
 
 ```{r}
 #| label: setup
+#| message: false
 library(tidyverse)
+fish <- read.csv("data/BlackfootFish.csv")
 
 ```
 
@@ -43,14 +49,20 @@ If you are struggling with the structure of your function, I would suggest readi
 
 ```{r}
 #| label: function-to-change-impossible-measurements-to-NA
-
+outlier_deletion <- function(variable_interest, min_reasonable, max_reasonable) {
+  variable_interest <- ifelse(variable_interest < min_reasonable | variable_interest > max_reasonable, NA, variable_interest)
+}
 ```
 
 **3. After consulting the [Montana Record Table](https://fwp.mt.gov/fish/anglingData/records) for the four species of trout included in these data, I have conjectured that it is unlikely to have measurements for fish below 5 cm and above 80 cm in length or below 10 g and above 4,000 g in weight. Use your function to modify the `length` and `weight` columns of the `fish` dataset based on my cutoffs.**
 
 ```{r}
 #| label: modify-impossible-values-of-length-weight
-
+fish_no_outlier <- fish_challenge|>
+  mutate(
+    length = outlier_deletion(length, 5, 80),
+    weight = outlier_deletion(length, 10, 4000)
+  )
 ```
 
 **3. Write a function to calculate the condition index of a fish, given inputs of weight and length.**
@@ -63,7 +75,17 @@ dataset and variable names as inputs)!
 
 ```{r}
 #| label: condition-function
+#condition_indexer <- function(dataframe, weight, length){
+ # dataframe|>
+ #   mutate(condition_index = (({{weight}}/({{length}}^3))*100))
+#}
+condition_indexer <- function(dataframe, weight, length) {
+  dataframe |>
+    mutate(condition_index = (({{ weight }} / ({{ length }}^3)) * 100))
+}
 
+conditioned_fish <- fish_no_outlier|>
+  condition_indexer(weight, length)
 ```
 
 **4. Make a thoughtful visualization of how fish conditions have varied over the duration of this study.**
@@ -76,5 +98,15 @@ dataset and variable names as inputs)!
 
 ```{r}
 #| label: condition-indices-over-time
-
+#| 
+ggplot(conditioned_fish,
+       aes(x = year, y = condition_index, color = species))+
+  geom_point(alpha = 0.1)+
+  geom_smooth(method = "loess", se = FALSE, aes(color = species))+
+  facet_wrap(~ section)+
+  labs(
+    title = "Condition Index by year, section, and species",
+    x = "Year",
+    y = ""
+  )
 ```
