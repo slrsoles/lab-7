@@ -1,7 +1,7 @@
 ---
 title: "Challenge 7: Incorporating Multiple Inputs"
 subtitle: "Functions + Fish"
-author: "Your name here!"
+author: "Skylar Richards"
 format: html
 editor: source
 embed-resources: true
@@ -9,7 +9,7 @@ embed-resources: true
 
 ```{r}
 #| label: setup
-
+library(tidyverse)
 
 ```
 
@@ -25,7 +25,8 @@ $$\text{condition index} = \frac{weight}{length^3} \times 100$$
 
 ```{r}
 #| label: transform-data-to-have-correct-units
-
+fish_challenge <- fish|>
+  mutate(length = length/10)
 ```
 
 **2. Collecting data of this sort can be very messy! Write a function that will replace unlikely `length` and `weight` measurements with `NA`. Your function should accept at least three inputs:**

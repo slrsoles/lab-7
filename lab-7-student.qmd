@@ -1,9 +1,12 @@
 ---
 title: "Lab 7: Functions + Fish"
-author: "Your name here!"
+author: "Skylar Richards"
 format: html
 editor: source
 embed-resources: true
+code-fold: true
+code-tools: true
+
 ---
 
 The goal of this lab is learn more about exploring missing data and writing
@@ -11,7 +14,9 @@ modular code.
 
 ```{r}
 #| label: setup
-
+#| message: false
+library(tidyverse)
+fish <- read.csv("data/BlackfootFish.csv")
 
 ```
 
@@ -44,13 +49,37 @@ measurement errors.
 
 ```{r}
 #| label: find-missing-values
+missing_values <- fish|>
+ summarise(
+    total_missing_observations = sum((across(everything(), ~ sum(is.na(.))))),
+    variables_missing = names(which(colSums(is.na(fish))>0))
+  )
+  
 
+#Reference https://stackoverflow.com/questions/20364450/find-names-of-columns-which-contain-missing-values
 ```
 
 **2. Create ONE thoughtful visualization that explores the frequency of missing values across the different years, sections, and trips.**
 
 ```{r}
 #| label: visual-of-missing-values-over-time
+
+missing_weight_summary <- fish |>
+  filter(is.na(weight)) |>
+  group_by(year, section, trip) |>
+  summarise(missing_count = n(), .groups = "drop")
+
+ggplot(missing_weight_summary, aes(x = year, y = section, fill = missing_count)) +
+  geom_tile(color = "white") +
+  facet_wrap(~ trip) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", na.value = "grey90") +
+  labs(
+    title = "Trip",
+    x = "Year",
+    y = "Section",
+    fill = "Missing Count")+
+  theme(plot.title = element_text(hjust = 0.5))
+# reference https://r-graph-gallery.com/79-levelplot-with-ggplot2.html
 
 ```
 
@@ -84,6 +113,7 @@ understand the intent of the process. *Additionally, it can make it very difficu
 
 **3. What is the mistake I made in the above rescaling code?**
 
+The weight rescaling function uses the minimum length in the denominator instead of the minimum weight
 
 When you find yourself copy-pasting lines of code, it's time to write a
 function, instead!
@@ -95,7 +125,11 @@ function, instead!
 
 ```{r}
 #| label: write-rescale-function
-
+rescale_01 <- function(value){
+  if ((length(value) > 1) & is.numeric(value)) {
+   (value = (value - min(value, na.rm = TRUE)) / 
+           (max(value, na.rm = TRUE) - min(value, na.rm = TRUE)))
+}}
 ```
 
 ::: callout-tip
@@ -143,13 +177,21 @@ statement in order to create a `length_scaled` variable.
 
 ```{r}
 #| label: compare-original-with-rescaled-lengths
+fish_rescaled <- fish|>
+  mutate(length_scaled = rescale_01(length))|>
+  pivot_longer(cols = c(length, length_scaled), names_to = "scale_type",  values_to = "length")
 
-fish |>  
-  ggplot(aes(x = length)) + 
-  geom_histogram(binwidth = 45) +
-  labs(x = "Original Values of Fish Length (mm)") +
-  scale_y_continuous(limits = c(0,4000))
+fish_rescaled|>
+  ggplot(aes(x = length)) +
+  geom_histogram(data = subset(fish_rescaled, scale_type == "length"), breaks = seq(0,1000, 25))+
+  geom_histogram(data = subset(fish_rescaled, scale_type == "length_scaled"), breaks = seq(0, 1, 0.025))+
+  facet_grid(~scale_type, scales = "free")+
+  scale_y_continuous(breaks = seq(0,3000,500), limits = c(0,3000))
 
+
+# https://stackoverflow.com/questions/24570646/individual-binwidths-in-faceted-histogram-on-ggplot2
+# help via this stackoverflow
+ 
 # Code for Q7 plot.
 
 ```
@@ -183,7 +225,13 @@ section of R for Data Science!
 
 ```{r}
 #| label: rescale-data-frame-function
+rescale_column <- function(data_frame, ...) {
+  data_frame |>
+    mutate(across(c(...), ~ rescale_01(.)))
+}
 
+
+# https://stackoverflow.com/questions/48694626/creating-a-function-in-r-with-variable-number-of-arguments
 ```
 
 **9. Use your `rescale_column()` function to rescale *both* the `length` and `weight` columns.**
@@ -194,5 +242,9 @@ I expect that you carry out this process by calling the `rescale_column()` funct
 
 ```{r}
 #| label: rescale-two-columns
+
+rescaled_both <- fish|>
+  rescale_column(weight, length)
+
 
 ```
